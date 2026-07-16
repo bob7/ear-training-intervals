@@ -2,15 +2,17 @@
 
 A simple browser-based ear training app for practicing interval recognition.
 
+[Demo](http://barmpalias.net/share/ear)
+
 ## Files
 
-- `ear-training-1.html` — the main app
+- `ear-training-1.html`
+- `ear-training-2.html` 
 
 ## How to use
 
-1. Open `ear-training-1.html` in a web browser.
-2. Choose a mode and sound.
-3. Listen and answer the interval prompts.
+1. Open one of the apps in a web browser.
+2. Listen and answer the interval prompts.
 
 ## Features
 
