@@ -4,7 +4,7 @@ Ear Trainer is a browser-based music ear-training app contained in a single HTML
 
 <br>
 
-<p margin-top="400px" align="center"><img width="600"  src="https://github.com/bob7/blockgame/blob/main/img.png"></p>
+<p margin-top="400px" align="center"><img width="400"  src="./img.png"></p>
 
 ## Exercises
 
