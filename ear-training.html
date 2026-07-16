@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ear Trainer</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --bg: #090d16;
+            --panel: #121927;
+            --panel-strong: #182234;
+            --border: #28364d;
+            --text: #f5f7fb;
+            --muted: #9eabc0;
+            --accent: #6ea8fe;
+            --accent-strong: #3d7ee8;
+            --success: #4ecb71;
+            --danger: #e35d6a;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            margin: 0;
+            padding: 32px 20px 48px;
+            font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top, #17233a 0, var(--bg) 42%),
+                var(--bg);
+        }
+
+        button, select { font: inherit; }
+
+        .container { width: min(100%, 880px); margin: 0 auto; }
+        .app-shell { display: grid; gap: 16px; }
+        .panel {
+            padding: 22px;
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            background: rgba(18, 25, 39, 0.94);
+            box-shadow: 0 18px 45px rgba(0, 0, 0, 0.2);
+        }
+        .panel h2 { margin: 0; font-size: 19px; }
+        .controls-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .control-group { display: grid; gap: 7px; text-align: left; }
+        .control-label { color: var(--muted); font-size: 13px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+        #exercise-select, #sound-select {
+            width: 100%;
+            min-height: 38px;
+            padding: 2px 6px;
+            border: 1px solid var(--border);
+            border-radius: 9px;
+            outline: none;
+            color: var(--text);
+            background: var(--panel-strong);
+            font-size: 17px;
+        }
+        #exercise-select:focus, #sound-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.16); }
+        #exercise-select option, #sound-select option { font-size: 17px; }
+        #interval-mode-controls { grid-column: 1 / -1; padding-top: 4px; text-align: left; }
+        .radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .radio-option {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            min-height: 38px;
+            padding: 7px 12px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            color: #cbd5e5;
+            background: var(--panel-strong);
+            cursor: pointer;
+        }
+        .radio-option:has(input:checked) { border-color: var(--accent); color: #fff; background: rgba(61, 126, 232, 0.2); }
+        .radio-option input { margin: 0; accent-color: var(--accent); }
+        .score-panel { display: grid; height: auto; padding: 6px 22px; align-content: center; overflow: hidden; }
+        .score-top-row {
+            display: grid;
+            grid-template-columns: auto minmax(140px, 1fr) auto;
+            grid-template-areas: "score feedback actions";
+            align-items: center;
+            gap: 20px;
+        }
+        #score-summary { display: flex; align-items: center; gap: 15px; }
+        #score { font-size: 16px; font-weight: 750; white-space: nowrap; }
+        #success-chart {
+            --score-percentage: 0%;
+            width: 72px;
+            height: 72px;
+            flex: 0 0 auto;
+            border-radius: 50%;
+            background: conic-gradient(var(--success) 0 var(--score-percentage), #303b4d var(--score-percentage) 100%);
+            box-shadow: 0 0 0 1px var(--border), inset 0 0 20px rgba(255, 255, 255, 0.05);
+        }
+        .action-bar { grid-area: actions; display: flex; gap: 10px; }
+        button {
+            min-height: 42px;
+            padding: 9px 17px;
+            border: 1px solid transparent;
+            border-radius: 9px;
+            color: #fff;
+            background: #2b374a;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 120ms ease, background 120ms ease, border-color 120ms ease;
+        }
+        button:hover { background: #3a4960; transform: translateY(-1px); }
+        button:focus-visible { outline: 3px solid rgba(110, 168, 254, 0.38); outline-offset: 2px; }
+        .primary-btn { background: var(--accent-strong); }
+        .primary-btn:hover { background: #4c8df5; }
+        .secondary-btn { border-color: var(--border); background: transparent; }
+        button.correct { border-color: var(--success); background: #238543; }
+        button.wrong { border-color: var(--danger); background: #b83846; }
+        #status {
+            grid-area: feedback;
+            height: 48px;
+            margin: 0;
+            overflow: hidden;
+            color: #dce5f2;
+            font-size: 16px;
+            font-weight: 650;
+            line-height: 1.35;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .exercise-panel { padding-bottom: 24px; }
+        #options {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 9px 12px;
+        }
+        .interval-row { display: flex; align-items: stretch; min-width: 0; }
+        .interval-btn { flex: 1 1 auto; min-width: 0; margin: 0; text-align: left; }
+        .play-btn {
+            width: 44px;
+            min-width: 44px;
+            margin-left: 7px;
+            padding: 6px;
+            border-color: var(--border);
+            background: transparent;
+            font-size: 14px;
+        }
+        .panel.history-panel { padding: 0; text-align: left; overflow: hidden; }
+        .history-heading {
+            padding: 20px 22px;
+            list-style: none;
+            font-size: 19px;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+        }
+        .history-heading::-webkit-details-marker { display: none; }
+        .history-heading:hover { background: rgba(255, 255, 255, 0.035); }
+        .history-panel[open] .history-heading { border-bottom: 1px solid var(--border); }
+        .history-content { padding: 12px 22px 22px; }
+        .history-actions { display: flex; justify-content: flex-end; }
+        #history { color: var(--muted); }
+        #history p { margin: 8px 0; }
+        #history ul { max-height: 220px; margin: 10px 0 0; padding-left: 22px; overflow-y: auto; }
+        .history-item { margin-bottom: 7px; color: #cbd5e5; }
+        .clear-history-btn { border-color: rgba(227, 93, 106, 0.45); color: #ffb9c0; background: transparent; }
+        .clear-history-btn:hover { background: rgba(227, 93, 106, 0.14); }
+        .stats-content { padding: 18px 22px 22px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
+        .stats-group { min-width: 0; }
+        .stats-group h3 { margin: 0 0 8px; font-size: 16px; }
+        .stats-list { margin: 0; padding: 0; list-style: none; }
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(40, 54, 77, 0.75);
+            color: #cbd5e5;
+            font-size: 14px;
+        }
+        .stats-item:last-child { border-bottom: 0; }
+        .stats-value { flex: 0 0 auto; color: var(--text); font-variant-numeric: tabular-nums; white-space: nowrap; }
+        .stats-value.no-attempts { color: var(--muted); }
+
+        @media (max-width: 620px) {
+            body { padding: 22px 12px 36px; }
+            .panel { padding: 17px; border-radius: 13px; }
+            .controls-grid, #options { grid-template-columns: 1fr; }
+            .stats-grid { grid-template-columns: 1fr; }
+            .score-panel { height: auto; }
+            .score-top-row {
+                grid-template-columns: minmax(190px, auto) 1fr;
+                grid-template-areas:
+                    "score feedback"
+                    "actions actions";
+            }
+            #score-summary { grid-area: score; }
+            .action-bar { display: grid; grid-template-columns: 1fr 1fr; }
+            .action-bar button { width: 100%; }
+        }
+
+        @media (max-width: 380px) {
+            .radio-group { display: grid; }
+            .score-panel { height: auto; }
+            .score-top-row {
+                grid-template-columns: 1fr;
+                grid-template-areas:
+                    "score"
+                    "feedback"
+                    "actions";
+                gap: 12px;
+            }
+            #score-summary { justify-content: center; gap: 10px; }
+            #success-chart { width: 62px; height: 62px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <main class="app-shell">
+            <section class="panel" aria-label="Training controls">
+                <div class="controls-grid">
+                    <div class="control-group">
+                        <label class="control-label" for="exercise-select">Exercise</label>
+                        <select id="exercise-select" onchange="setExerciseType()">
+                            <option value="intervals">Interval Recognition</option>
+                            <option value="chords">Chord Quality</option>
+                            <option value="scales">Scale Recognition</option>
+                        </select>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label" for="sound-select">Sound</label>
+                        <select id="sound-select" onchange="setSoundType()">
+                            <option value="sine">Sine</option>
+                            <option value="triangle">Triangle</option>
+                            <option value="square">Square</option>
+                            <option value="sawtooth">Sawtooth</option>
+                            <option value="custom-pulse">Soft Pulse</option>
+                            <option value="custom-bell">Soft Bell</option>
+                            <option value="custom-violin">Violin-like</option>
+                        </select>
+                    </div>
+                    <div id="interval-mode-controls">
+                        <span class="control-label">Interval playback</span>
+                        <div class="radio-group">
+                            <label class="radio-option"><input type="radio" name="mode" value="melodic-asc" checked onchange="setMode()"> Melodic ↑</label>
+                            <label class="radio-option"><input type="radio" name="mode" value="melodic-desc" onchange="setMode()"> Melodic ↓</label>
+                            <label class="radio-option"><input type="radio" name="mode" value="harmonic" onchange="setMode()"> Harmonic</label>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel score-panel" aria-label="Current session score and playback controls">
+                <div class="score-top-row">
+                    <div id="score-summary">
+                        <div id="success-chart" role="img" aria-label="Current success percentage: 0%"></div>
+                        <div id="score">0% (0/0)</div>
+                    </div>
+                    <div id="status" role="status" aria-live="polite"></div>
+                    <div class="action-bar">
+                        <button class="primary-btn" id="next-button" onclick="next()">Start</button>
+                        <button class="secondary-btn" onclick="repeatLastExercise()">Repeat</button>
+                    </div>
+                </div>
+            </section>
+
+            <section class="panel exercise-panel" aria-label="Answer choices">
+                <div id="options"></div>
+            </section>
+
+            <details class="panel history-panel">
+                <summary class="history-heading">History</summary>
+                <div class="history-content">
+                    <div id="history"></div>
+                    <div class="history-actions">
+                        <button class="clear-history-btn" onclick="clearHistory()">Clear History</button>
+                    </div>
+                </div>
+            </details>
+
+            <details class="panel history-panel">
+                <summary class="history-heading">Stats</summary>
+                <div class="stats-content">
+                    <div class="stats-grid">
+                        <section class="stats-group" aria-labelledby="interval-stats-heading">
+                            <h3 id="interval-stats-heading">Interval Recognition</h3>
+                            <ol class="stats-list" id="interval-stats"></ol>
+                        </section>
+                        <section class="stats-group" aria-labelledby="chord-stats-heading">
+                            <h3 id="chord-stats-heading">Chord Quality</h3>
+                            <ol class="stats-list" id="chord-stats"></ol>
+                        </section>
+                        <section class="stats-group" aria-labelledby="scale-stats-heading">
+                            <h3 id="scale-stats-heading">Scale Recognition</h3>
+                            <ol class="stats-list" id="scale-stats"></ol>
+                        </section>
+                    </div>
+                </div>
+            </details>
+        </main>
+    </div>
+
+    <script>
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let score = 0;
+        let questionCount = 0;
+        let currentRoot = 0;
+        let currentAnswer = '';
+        let currentExercise = 'intervals';
+        let currentMode = 'melodic-asc';
+        let currentSoundType = 'sine';
+        let played = false;
+        let lastPlayedNotes = [];
+        let lastPlaybackStyle = 'melodic';
+        const storageKey = 'earTrainerSessionHistory';
+        const statsStorageKey = 'earTrainerLifetimeStats';
+        let sessionHistory = [];
+        let lifetimeStats = {};
+        let activeSessionId = '';
+        let deviceId = '';
+
+        const intervals = {
+            'Minor 2nd': 1,
+            'Major 2nd': 2,
+            'Minor 3rd': 3,
+            'Major 3rd': 4,
+            'Perfect 4th': 5,
+            'Tritone': 6,
+            'Perfect 5th': 7,
+            'Minor 6th': 8,
+            'Major 6th': 9,
+            'Minor 7th': 10,
+            'Major 7th': 11,
+            'Octave': 12
+        };
+
+        const chordQualities = {
+            'Major': [0, 4, 7],
+            'Minor': [0, 3, 7],
+            'Diminished': [0, 3, 6],
+            'Augmented': [0, 4, 8],
+            'Dominant 7th': [0, 4, 7, 10],
+            'Major 7th': [0, 4, 7, 11],
+            'Minor 7th': [0, 3, 7, 10]
+        };
+
+        const scales = {
+            'Major': [0, 2, 4, 5, 7, 9, 11, 12],
+            'Natural Minor': [0, 2, 3, 5, 7, 8, 10, 12],
+            'Harmonic Minor': [0, 2, 3, 5, 7, 8, 11, 12],
+            'Major Pentatonic': [0, 2, 4, 7, 9, 12],
+            'Minor Pentatonic': [0, 3, 5, 7, 10, 12],
+            'Whole Tone': [0, 2, 4, 6, 8, 10, 12]
+        };
+
+        function updateScoreDisplay() {
+            const percentage = questionCount === 0
+                ? 0
+                : Math.round((score / questionCount) * 100);
+            const chart = document.getElementById('success-chart');
+
+            document.getElementById('score').textContent = `${percentage}% (${score}/${questionCount})`;
+            chart.style.setProperty('--score-percentage', `${percentage}%`);
+            chart.setAttribute(
+                'aria-label',
+                `Current success percentage: ${percentage}%, ${score} correct out of ${questionCount} guesses`
+            );
+        }
+
+        function loadDeviceId() {
+            try {
+                deviceId = localStorage.getItem('earTrainerDeviceId') || '';
+            } catch (e) {
+                deviceId = '';
+            }
+            if (!deviceId) {
+                deviceId = `device-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+                try {
+                    localStorage.setItem('earTrainerDeviceId', deviceId);
+                } catch (e) {}
+            }
+        }
+
+        function loadSessionHistory() {
+            try {
+                const saved = localStorage.getItem(storageKey);
+                const parsed = saved ? JSON.parse(saved) : [];
+                return Array.isArray(parsed)
+                    ? parsed.map(entry => entry.complete === false ? { ...entry, complete: true } : entry)
+                    : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function createEmptyStats() {
+            return { intervals: {}, chords: {}, scales: {} };
+        }
+
+        function loadLifetimeStats() {
+            try {
+                const saved = localStorage.getItem(statsStorageKey);
+                const parsed = saved ? JSON.parse(saved) : {};
+                if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+                    return createEmptyStats();
+                }
+                return {
+                    intervals: parsed.intervals && typeof parsed.intervals === 'object' ? parsed.intervals : {},
+                    chords: parsed.chords && typeof parsed.chords === 'object' ? parsed.chords : {},
+                    scales: parsed.scales && typeof parsed.scales === 'object' ? parsed.scales : {}
+                };
+            } catch (e) {
+                return createEmptyStats();
+            }
+        }
+
+        function getChoicesForExercise(exercise) {
+            if (exercise === 'chords') return chordQualities;
+            if (exercise === 'scales') return scales;
+            return intervals;
+        }
+
+        function renderStatsList(listId, exercise) {
+            const list = document.getElementById(listId);
+            if (!list) return;
+
+            const rows = Object.keys(getChoicesForExercise(exercise)).map(name => {
+                const saved = lifetimeStats[exercise]?.[name];
+                const total = Number.isFinite(saved?.total) && saved.total > 0 ? saved.total : 0;
+                const correct = total && Number.isFinite(saved?.correct)
+                    ? Math.min(total, Math.max(0, saved.correct))
+                    : 0;
+                return { name, correct, total, rate: total ? correct / total : null };
+            }).sort((a, b) => {
+                if (a.rate === null && b.rate !== null) return 1;
+                if (a.rate !== null && b.rate === null) return -1;
+                if (a.rate !== b.rate) return (a.rate ?? 0) - (b.rate ?? 0);
+                return a.name.localeCompare(b.name);
+            });
+
+            list.innerHTML = rows.map(row => {
+                const result = row.total
+                    ? `<span class="stats-value">${Math.round(row.rate * 100)}% (${row.correct}/${row.total})</span>`
+                    : '<span class="stats-value no-attempts">-</span>';
+                return `<li class="stats-item"><span>${row.name}</span>${result}</li>`;
+            }).join('');
+        }
+
+        function renderStats() {
+            renderStatsList('interval-stats', 'intervals');
+            renderStatsList('chord-stats', 'chords');
+            renderStatsList('scale-stats', 'scales');
+        }
+
+        function recordAttempt(exercise, answer, wasCorrect) {
+            if (!lifetimeStats[exercise]) lifetimeStats[exercise] = {};
+            const previous = lifetimeStats[exercise][answer];
+            const total = Number.isFinite(previous?.total) ? previous.total : 0;
+            const correct = Number.isFinite(previous?.correct) ? previous.correct : 0;
+            lifetimeStats[exercise][answer] = {
+                total: total + 1,
+                correct: correct + (wasCorrect ? 1 : 0)
+            };
+            try {
+                localStorage.setItem(statsStorageKey, JSON.stringify(lifetimeStats));
+            } catch (e) {}
+            renderStats();
+        }
+
+        function renderHistory() {
+            const historyEl = document.getElementById('history');
+            if (!historyEl) return;
+            if (!sessionHistory.length) {
+                historyEl.innerHTML = '<p>No sessions recorded yet.</p>';
+                return;
+            }
+
+            const items = sessionHistory.map(entry => {
+                const counts = Number.isFinite(entry.correct) && Number.isFinite(entry.guesses)
+                    ? ` (${entry.correct}/${entry.guesses})`
+                    : '';
+                const progress = entry.id === activeSessionId && entry.complete === false
+                    ? ' · In progress'
+                    : '';
+                return `<li class="history-item">${entry.date} — ${entry.score}%${counts}${progress}</li>`;
+            }).join('');
+
+            historyEl.innerHTML = `<p>Sessions for this browser/device:</p><ul>${items}</ul>`;
+        }
+
+        function saveSessionResult(percent) {
+            const existingIndex = activeSessionId
+                ? sessionHistory.findIndex(entry => entry.id === activeSessionId)
+                : -1;
+            const existingEntry = existingIndex >= 0 ? sessionHistory[existingIndex] : null;
+            const entry = {
+                id: existingEntry?.id || `session-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+                date: existingEntry?.date || new Date().toLocaleString(),
+                score: percent,
+                correct: score,
+                guesses: questionCount,
+                complete: false,
+                exercise: currentExercise,
+                mode: currentMode,
+                sound: currentSoundType,
+                device: deviceId
+            };
+            activeSessionId = entry.id;
+            if (existingIndex >= 0) {
+                sessionHistory[existingIndex] = entry;
+                sessionHistory = [...sessionHistory];
+            } else {
+                sessionHistory = [entry, ...sessionHistory].slice(0, 20);
+            }
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(sessionHistory));
+            } catch (e) {}
+            renderHistory();
+        }
+
+        function finalizeActiveSession() {
+            const activeIndex = sessionHistory.findIndex(entry => entry.id === activeSessionId);
+            if (activeIndex < 0) return;
+
+            sessionHistory[activeIndex] = {
+                ...sessionHistory[activeIndex],
+                complete: true
+            };
+            try {
+                localStorage.setItem(storageKey, JSON.stringify(sessionHistory));
+            } catch (e) {}
+        }
+
+        function clearHistory() {
+            sessionHistory = [];
+            lifetimeStats = createEmptyStats();
+            activeSessionId = '';
+            try {
+                localStorage.removeItem(storageKey);
+                localStorage.removeItem(statsStorageKey);
+            } catch (e) {}
+            renderHistory();
+            renderStats();
+        }
+
+        function getSoundSettings(type) {
+            switch (type) {
+                case 'triangle':
+                    return { waveform: 'triangle', gain: 0.7, attack: 0.02, release: 0.18 };
+                case 'square':
+                    return { waveform: 'square', gain: 0.65, attack: 0.015, release: 0.14 };
+                case 'sawtooth':
+                    return { waveform: 'sawtooth', gain: 0.6, attack: 0.01, release: 0.16 };
+                case 'custom-pulse':
+                    return { waveform: 'sine', gain: 0.55, attack: 0.03, release: 0.22 };
+                case 'custom-bell':
+                    return { waveform: 'sine', gain: 0.5, attack: 0.025, release: 0.24 };
+                case 'custom-violin':
+                    return { waveform: 'triangle', gain: 0.58, attack: 0.04, release: 0.26 };
+                default:
+                    return { waveform: 'sine', gain: 0.7, attack: 0.02, release: 0.2 };
+            }
+        }
+
+        // Schedule a tone with a short gain envelope to avoid clicks
+        function playTone(freq, duration = 0.5, when = 0, type = currentSoundType) {
+            const startTime = audioCtx.currentTime + when;
+            const stopTime = startTime + duration;
+            const settings = getSoundSettings(type);
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = settings.waveform;
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.exponentialRampToValueAtTime(settings.gain, startTime + settings.attack);
+            gain.gain.setValueAtTime(settings.gain, stopTime - settings.release);
+            gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(stopTime + 0.02);
+        }
+
+        function noteToFreq(note) {
+            return 440 * Math.pow(2, (note - 69) / 12); // A4 = 440Hz, MIDI note 69
+        }
+
+        function setMode() {
+            currentMode = document.querySelector('input[name="mode"]:checked').value;
+        }
+
+        function setExerciseType() {
+            currentExercise = document.getElementById('exercise-select').value;
+            document.getElementById('interval-mode-controls').hidden = currentExercise !== 'intervals';
+            document.getElementById('next-button').textContent = 'Start';
+            document.getElementById('status').textContent = '';
+            currentAnswer = '';
+            played = false;
+            lastPlayedNotes = [];
+            createOptions();
+        }
+
+        function setSoundType() {
+            currentSoundType = document.getElementById('sound-select').value;
+        }
+
+        function getExerciseChoices() {
+            return getChoicesForExercise(currentExercise);
+        }
+
+        function prepareRoot() {
+            currentRoot = Math.floor(Math.random() * 12) + 60; // C4 to B4
+            played = true;
+        }
+
+        function playNotes(notes, playbackStyle) {
+            audioCtx.resume && audioCtx.resume();
+            const harmonic = playbackStyle === 'harmonic';
+            const twoNoteExercise = notes.length === 2;
+            const duration = harmonic ? 1.0 : (twoNoteExercise ? 0.5 : 0.32);
+            const spacing = twoNoteExercise ? 0.6 : 0.38;
+            const latency = 0.05;
+
+            notes.forEach((note, index) => {
+                const delay = harmonic ? latency : latency + (index * spacing);
+                playTone(noteToFreq(note), duration, delay, currentSoundType);
+            });
+        }
+
+        function buildExercisePlayback(answer, root) {
+            if (currentExercise === 'chords') {
+                return {
+                    notes: chordQualities[answer].map(semitones => root + semitones),
+                    style: 'harmonic'
+                };
+            }
+
+            if (currentExercise === 'scales') {
+                return {
+                    notes: scales[answer].map(semitones => root + semitones),
+                    style: 'sequence'
+                };
+            }
+
+            let target = root + intervals[answer];
+            if (currentMode === 'melodic-desc') target = root - intervals[answer];
+            return {
+                notes: [root, target],
+                style: currentMode === 'harmonic' ? 'harmonic' : 'melodic'
+            };
+        }
+
+        function playCurrentExercise() {
+            if (!played) prepareRoot();
+            const choices = Object.keys(getExerciseChoices());
+            currentAnswer = choices[Math.floor(Math.random() * choices.length)];
+            const playback = buildExercisePlayback(currentAnswer, currentRoot);
+
+            lastPlayedNotes = [...playback.notes];
+            lastPlaybackStyle = playback.style;
+            playNotes(lastPlayedNotes, lastPlaybackStyle);
+        }
+
+        function repeatLastExercise() {
+            if (!lastPlayedNotes.length) return;
+            playNotes(lastPlayedNotes, lastPlaybackStyle);
+        }
+
+        // Play an example without submitting an answer.
+        function playPreview(name) {
+            const root = played ? currentRoot : 60;
+            const playback = buildExercisePlayback(name, root);
+            playNotes(playback.notes, playback.style);
+        }
+
+        function createOptions() {
+            let div = document.getElementById('options');
+            div.innerHTML = '';
+            Object.keys(getExerciseChoices()).forEach(answer => {
+                let container = document.createElement('div');
+                container.className = 'interval-row';
+
+                let btn = document.createElement('button');
+                btn.className = 'interval-btn';
+                btn.textContent = answer;
+                btn.onclick = () => checkAnswer(answer, btn);
+
+                let play = document.createElement('button');
+                play.className = 'play-btn';
+                play.textContent = '🔊';
+                play.title = `Play ${answer} example`;
+                play.onclick = (e) => { e.stopPropagation(); playPreview(answer); };
+
+                container.appendChild(btn);
+                container.appendChild(play);
+                div.appendChild(container);
+            });
+        }
+
+        function checkAnswer(selected, btn) {
+            if (!currentAnswer) return;
+
+            const presentedAnswer = currentAnswer;
+            const wasCorrect = selected === presentedAnswer;
+            currentAnswer = '';
+
+            if (wasCorrect) {
+                score++;
+            } else {
+                btn.classList.add('wrong');
+            }
+            questionCount++;
+            recordAttempt(currentExercise, presentedAnswer, wasCorrect);
+            updateScoreDisplay();
+            const percentage = Math.round((score / questionCount) * 100);
+            saveSessionResult(percentage);
+            if (wasCorrect) {
+                btn.classList.add('correct');
+                document.getElementById('status').textContent = 'Correct!';
+            } else {
+                document.getElementById('status').textContent = `Wrong. It was ${presentedAnswer}`;
+            }
+            setTimeout(() => {
+                btn.classList.remove('correct', 'wrong');
+            }, 1000);
+        }
+
+        function next() {
+            document.getElementById('next-button').textContent = 'Next';
+            document.getElementById('status').textContent = '';
+            played = false;
+            playCurrentExercise();
+        }
+
+        // Init
+        loadDeviceId();
+        sessionHistory = loadSessionHistory();
+        lifetimeStats = loadLifetimeStats();
+        setMode();
+        setSoundType();
+        setExerciseType();
+        updateScoreDisplay();
+        renderHistory();
+        renderStats();
+        window.addEventListener('pagehide', finalizeActiveSession);
+    </script>
+</body>
+</html>
