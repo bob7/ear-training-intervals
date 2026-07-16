@@ -27,7 +27,6 @@ The foldable **History** panel shows recent session scores for the current brows
 
 The foldable **Stats** panel shows accuracy for every individual interval, chord quality, and scale. Attempted items are ordered from the lowest success percentage to the highest; items that have not been played display `-`.
 
-<p margin-top="400px" align="center"><img width="500"  src="./img.png"></p>
-
 History and statistics are stored locally in the browser with `localStorage`. Nothing is sent to a server. Selecting **Clear History** removes both the session history and accumulated statistics.
 
+<p margin-top="400px" align="center"><img width="6500"  src="./img.png"></p>
