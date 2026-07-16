@@ -2,7 +2,9 @@
 
 Ear Trainer is a browser-based music ear-training app contained in a single HTML file. It generates tones with the Web Audio API and provides exercises for recognizing intervals, chord qualities, and scales. [Demo](http://barmpalias.net/share/ear)
 
-![](./img.png)
+<br>
+
+<p margin-top="400px" align="center"><img width="600"  src="https://github.com/bob7/blockgame/blob/main/img.png"></p>
 
 ## Exercises
 
