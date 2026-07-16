@@ -2,9 +2,6 @@
 
 Ear Trainer is a browser-based music ear-training app contained in a single HTML file. It generates tones with the Web Audio API and provides exercises for recognizing intervals, chord qualities, and scales. [Demo](http://barmpalias.net/share/ear)
 
-<br>
-
-<p margin-top="400px" align="center"><img width="400"  src="./img.png"></p>
 
 ## Exercises
 
@@ -29,6 +26,8 @@ The score panel shows the percentage and number of correct answers in the curren
 The foldable **History** panel shows recent session scores for the current browser/device.
 
 The foldable **Stats** panel shows accuracy for every individual interval, chord quality, and scale. Attempted items are ordered from the lowest success percentage to the highest; items that have not been played display `-`.
+
+<p margin-top="400px" align="center"><img width="500"  src="./img.png"></p>
 
 History and statistics are stored locally in the browser with `localStorage`. Nothing is sent to a server. Selecting **Clear History** removes both the session history and accumulated statistics.
 
