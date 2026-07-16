@@ -61,7 +61,7 @@
         #exercise-select:focus, #sound-select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(110, 168, 254, 0.16); }
         #exercise-select option, #sound-select option { font-size: 17px; }
         #interval-mode-controls { grid-column: 1 / -1; padding-top: 4px; text-align: left; }
-        .radio-group { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .radio-group { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
         .radio-option {
             display: flex;
             align-items: center;
@@ -75,7 +75,16 @@
             cursor: pointer;
         }
         .radio-option:has(input:checked) { border-color: var(--accent); color: #fff; background: rgba(61, 126, 232, 0.2); }
-        .radio-option input { margin: 0; accent-color: var(--accent); }
+        .radio-option input {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+        }
+        .radio-option:has(input:focus-visible) { outline: 3px solid rgba(110, 168, 254, 0.38); outline-offset: 2px; }
         .score-panel { display: grid; height: auto; padding: 6px 22px; align-content: center; overflow: hidden; }
         .score-top-row {
             display: grid;
@@ -164,8 +173,8 @@
         #history p { margin: 8px 0; }
         #history ul { max-height: 220px; margin: 10px 0 0; padding-left: 22px; overflow-y: auto; }
         .history-item { margin-bottom: 7px; color: #cbd5e5; }
-        .clear-history-btn { border-color: rgba(227, 93, 106, 0.45); color: #ffb9c0; background: transparent; }
-        .clear-history-btn:hover { background: rgba(227, 93, 106, 0.14); }
+        .clear-data-btn { border-color: rgba(227, 93, 106, 0.45); color: #ffb9c0; background: transparent; }
+        .clear-data-btn:hover { background: rgba(227, 93, 106, 0.14); }
         .stats-content { padding: 18px 22px 22px; }
         .stats-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 22px; }
         .stats-group { min-width: 0; }
@@ -223,16 +232,14 @@
             <section class="panel" aria-label="Training controls">
                 <div class="controls-grid">
                     <div class="control-group">
-                        <label class="control-label" for="exercise-select">Exercise</label>
-                        <select id="exercise-select" onchange="setExerciseType()">
+                        <select id="exercise-select" aria-label="Exercise" onchange="setExerciseType()">
                             <option value="intervals">Interval Recognition</option>
                             <option value="chords">Chord Quality</option>
                             <option value="scales">Scale Recognition</option>
                         </select>
                     </div>
                     <div class="control-group">
-                        <label class="control-label" for="sound-select">Sound</label>
-                        <select id="sound-select" onchange="setSoundType()">
+                        <select id="sound-select" aria-label="Sound" onchange="setSoundType()">
                             <option value="sine">Sine</option>
                             <option value="triangle">Triangle</option>
                             <option value="square">Square</option>
@@ -243,8 +250,7 @@
                         </select>
                     </div>
                     <div id="interval-mode-controls">
-                        <span class="control-label">Interval playback</span>
-                        <div class="radio-group">
+                        <div class="radio-group" role="group" aria-label="Interval playback">
                             <label class="radio-option"><input type="radio" name="mode" value="melodic-asc" checked onchange="setMode()"> Melodic ↑</label>
                             <label class="radio-option"><input type="radio" name="mode" value="melodic-desc" onchange="setMode()"> Melodic ↓</label>
                             <label class="radio-option"><input type="radio" name="mode" value="harmonic" onchange="setMode()"> Harmonic</label>
@@ -276,7 +282,7 @@
                 <div class="history-content">
                     <div id="history"></div>
                     <div class="history-actions">
-                        <button class="clear-history-btn" onclick="clearHistory()">Clear History</button>
+                        <button class="clear-data-btn" onclick="clearHistory()">Clear</button>
                     </div>
                 </div>
             </details>
@@ -297,6 +303,9 @@
                             <h3 id="scale-stats-heading">Scale Recognition</h3>
                             <ol class="stats-list" id="scale-stats"></ol>
                         </section>
+                    </div>
+                    <div class="history-actions">
+                        <button class="clear-data-btn" onclick="clearStats()">Clear</button>
                     </div>
                 </div>
             </details>
@@ -536,13 +545,18 @@
 
         function clearHistory() {
             sessionHistory = [];
-            lifetimeStats = createEmptyStats();
             activeSessionId = '';
             try {
                 localStorage.removeItem(storageKey);
-                localStorage.removeItem(statsStorageKey);
             } catch (e) {}
             renderHistory();
+        }
+
+        function clearStats() {
+            lifetimeStats = createEmptyStats();
+            try {
+                localStorage.removeItem(statsStorageKey);
+            } catch (e) {}
             renderStats();
         }
 
