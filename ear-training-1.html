@@ -13,15 +13,28 @@
         .play-btn { padding: 6px 8px; margin-left: 6px; font-size: 14px; background: #222; border-radius: 4px; width: 40px; }
         label { margin: 5px; color: #ccc; }
         .sound-row { margin-top: 12px; }
+        #sound-select { font-size: 18px; padding: 2px 6px; }
+        #sound-select option { font-size: 18px; }
         button:hover { background: #555; }
         button.correct { background: #4CAF50; }
         button.wrong { background: #f44336; }
         #status { font-size: 18px; margin: 20px; min-height: 30px; }
-        #score { font-size: 24px; margin: 10px; }
+        #score-summary { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 18px 0; }
+        #score { font-size: 24px; margin: 0; }
+        #success-chart {
+            --success: 0%;
+            width: 88px;
+            height: 88px;
+            border-radius: 50%;
+            background: conic-gradient(#4CAF50 0 var(--success), #333 var(--success) 100%);
+            box-shadow: 0 0 0 1px #444;
+        }
         #options { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 20px 0; }
         #history { margin-top: 24px; text-align: left; background: #1b1b1b; padding: 12px; border-radius: 8px; }
         #history ul { padding-left: 20px; margin: 8px 0 0; }
         .history-item { margin-bottom: 6px; }
+        .clear-history-btn { margin-top: 12px; background: #7a2525; }
+        .clear-history-btn:hover { background: #a83232; }
     </style>
 </head>
 <body>
@@ -44,14 +57,16 @@
                 <option value="custom-violin">Violin-like</option>
             </select>
         </div>
-        <div id="score">Score: 0%</div>
+        <div id="score-summary">
+            <div id="success-chart" role="img" aria-label="Current success percentage: 0%"></div>
+            <div id="score">Score: 0% (0/0)</div>
+        </div>
         <div id="status"></div>
-        <button onclick="playReference()">Play Reference</button>
-        <button onclick="playInterval()">Play Interval</button>
+        <button id="next-button" onclick="next()">Start</button>
         <button onclick="repeatLastInterval()">Repeat</button>
-        <button onclick="next()">Next</button>
         <div id="options"></div>
         <div id="history"></div>
+        <button class="clear-history-btn" onclick="clearHistory()">Clear History</button>
     </div>
 
     <script>
@@ -69,7 +84,7 @@
         const storageKey = 'earTrainerSessionHistory';
         let sessionHistory = [];
         let deviceId = '';
-        let roundActive = false;
+        let sessionComplete = false;
 
         const intervals = {
             'Minor 2nd': 1,
@@ -87,12 +102,17 @@
         };
 
         function updateScoreDisplay() {
-            if (questionCount === 0) {
-                document.getElementById('score').textContent = 'Score: 0%';
-            } else {
-                const percentage = Math.round((score / questionCount) * 100);
-                document.getElementById('score').textContent = `Score: ${percentage}%`;
-            }
+            const percentage = questionCount === 0
+                ? 0
+                : Math.round((score / questionCount) * 100);
+            const chart = document.getElementById('success-chart');
+
+            document.getElementById('score').textContent = `Score: ${percentage}% (${score}/${questionCount})`;
+            chart.style.setProperty('--success', `${percentage}%`);
+            chart.setAttribute(
+                'aria-label',
+                `Current success percentage: ${percentage}%, ${score} correct out of ${questionCount} guesses`
+            );
         }
 
         function loadDeviceId() {
@@ -144,6 +164,14 @@
             sessionHistory = [entry, ...sessionHistory].slice(0, 20);
             try {
                 localStorage.setItem(storageKey, JSON.stringify(sessionHistory));
+            } catch (e) {}
+            renderHistory();
+        }
+
+        function clearHistory() {
+            sessionHistory = [];
+            try {
+                localStorage.removeItem(storageKey);
             } catch (e) {}
             renderHistory();
         }
@@ -201,14 +229,13 @@
             currentSoundType = document.getElementById('sound-select').value;
         }
 
-        function playReference() {
+        function prepareRoot() {
             currentRoot = Math.floor(Math.random() * 12) + 60; // C4 to B4
-            playTone(noteToFreq(currentRoot));
             played = true;
         }
 
         function playInterval() {
-            if (!played) playReference();
+            if (!played) prepareRoot();
             let keys = Object.keys(intervals);
             currentAnswer = keys[Math.floor(Math.random() * keys.length)];
             currentInterval = intervals[currentAnswer];
@@ -297,17 +324,20 @@
         function resetRound() {
             score = 0;
             questionCount = 0;
+            sessionComplete = false;
             updateScoreDisplay();
-            document.getElementById('status').textContent = 'Round complete! Starting new round.';
+            document.getElementById('status').textContent = 'Session complete! Starting a new session.';
         }
 
         function checkAnswer(selected, btn) {
-            roundActive = true;
+            if (sessionComplete) return;
+
             if (selected === currentAnswer) {
                 score++;
             } else {
                 btn.classList.add('wrong');
             }
+            questionCount++;
             updateScoreDisplay();
             if (selected === currentAnswer) {
                 btn.classList.add('correct');
@@ -315,8 +345,8 @@
             } else {
                 document.getElementById('status').textContent = `Wrong. It was ${currentAnswer}`;
             }
-            questionCount++;
             if (questionCount >= 20) {
+                sessionComplete = true;
                 const percentage = Math.round((score / 20) * 100);
                 saveSessionResult(percentage);
                 setTimeout(resetRound, 1500);
@@ -327,18 +357,10 @@
         }
 
         function next() {
-            if (roundActive && questionCount > 0) {
-                const percentage = Math.round((score / questionCount) * 100);
-                saveSessionResult(percentage);
-            }
-            roundActive = false;
+            document.getElementById('next-button').textContent = 'Next';
             document.getElementById('status').textContent = '';
-            score = 0;
-            questionCount = 0;
-            updateScoreDisplay();
             played = false;
-            playReference();
-            setTimeout(playInterval, 800);
+            playInterval();
         }
 
         // Init
@@ -349,7 +371,6 @@
         setSoundType();
         updateScoreDisplay();
         renderHistory();
-        next();
     </script>
 </body>
 </html>
