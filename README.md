@@ -29,4 +29,4 @@ The foldable **Stats** panel shows accuracy for every individual interval, chord
 
 History and statistics are stored locally in the browser with `localStorage`. Nothing is sent to a server. Selecting **Clear History** removes both the session history and accumulated statistics.
 
-<p margin-top="400px" align="center"><img width="6500"  src="./img.png"></p>
+<p margin-top="400px" align="center"><img width="650"  src="./img.png"></p>
