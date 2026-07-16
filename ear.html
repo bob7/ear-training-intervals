@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ear Trainer</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background: #111; color: #fff; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        button { padding: 10px 20px; margin: 5px; font-size: 16px; background: #333; color: #fff; border: none; border-radius: 5px; cursor: pointer; display: inline-block; }
+        .interval-row { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 340px; }
+        .interval-btn { min-width: 220px; text-align: center; }
+        .play-btn { padding: 6px 8px; margin-left: 6px; font-size: 14px; background: #222; border-radius: 4px; width: 40px; }
+        label { margin: 5px; color: #ccc; }
+        button:hover { background: #555; }
+        button.correct { background: #4CAF50; }
+        button.wrong { background: #f44336; }
+        #status { font-size: 18px; margin: 20px; min-height: 30px; }
+        #score { font-size: 24px; margin: 10px; }
+        #options { display: flex; flex-direction: column; align-items: center; gap: 8px; margin: 20px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ear Trainer: Intervals</h1>
+        <div>
+            <label><input type="radio" name="mode" value="melodic-asc" checked onchange="setMode()"> Melodic ↑</label>
+            <label><input type="radio" name="mode" value="melodic-desc" onchange="setMode()"> Melodic ↓</label>
+            <label><input type="radio" name="mode" value="harmonic" onchange="setMode()"> Harmonic</label>
+        </div>
+        <div id="score">Score: 0%</div>
+        <div id="status"></div>
+        <button onclick="playReference()">Play Reference</button>
+        <button onclick="playInterval()">Play Interval</button>
+        <button onclick="repeatLastInterval()">Repeat</button>
+        <button onclick="next()">Next</button>
+        <div id="options"></div>
+    </div>
+
+    <script>
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let score = 0;
+        let questionCount = 0;
+        let currentRoot = 0;
+        let currentInterval = 0;
+        let currentAnswer = '';
+        let currentMode = 'melodic-asc';
+        let played = false;
+        let lastPlayedIntervalName = '';
+        let lastPlayedRoot = 0;
+
+        const intervals = {
+            'Minor 2nd': 1,
+            'Major 2nd': 2,
+            'Minor 3rd': 3,
+            'Major 3rd': 4,
+            'Perfect 4th': 5,
+            'Tritone': 6,
+            'Perfect 5th': 7,
+            'Minor 6th': 8,
+            'Major 6th': 9,
+            'Minor 7th': 10,
+            'Major 7th': 11,
+            'Octave': 12
+        };
+
+        function updateScoreDisplay() {
+            if (questionCount === 0) {
+                document.getElementById('score').textContent = 'Score: 0%';
+            } else {
+                const percentage = Math.round((score / questionCount) * 100);
+                document.getElementById('score').textContent = `Score: ${percentage}%`;
+            }
+        }
+
+        // Schedule a tone with a short gain envelope to avoid clicks
+        function playTone(freq, duration = 0.5, when = 0, type = 'sine') {
+            const startTime = audioCtx.currentTime + when;
+            const stopTime = startTime + duration;
+
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, startTime);
+            gain.gain.setValueAtTime(0.0001, startTime);
+            gain.gain.exponentialRampToValueAtTime(1.0, startTime + 0.01);
+            gain.gain.setValueAtTime(1.0, stopTime - 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, stopTime);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+
+            osc.start(startTime);
+            osc.stop(stopTime + 0.02);
+        }
+
+        function noteToFreq(note) {
+            return 440 * Math.pow(2, (note - 69) / 12); // A4 = 440Hz, MIDI note 69
+        }
+
+        function setMode() {
+            currentMode = document.querySelector('input[name="mode"]:checked').value;
+        }
+
+        function playReference() {
+            currentRoot = Math.floor(Math.random() * 12) + 60; // C4 to B4
+            playTone(noteToFreq(currentRoot));
+            played = true;
+        }
+
+        function playInterval() {
+            if (!played) playReference();
+            let keys = Object.keys(intervals);
+            currentAnswer = keys[Math.floor(Math.random() * keys.length)];
+            currentInterval = intervals[currentAnswer];
+
+            lastPlayedIntervalName = currentAnswer;
+            lastPlayedRoot = currentRoot;
+
+            let secondNote = currentRoot + currentInterval;
+            if (currentMode === 'melodic-desc') secondNote = currentRoot - currentInterval;
+
+            audioCtx.resume && audioCtx.resume();
+            const latency = 0.05; // small scheduling offset
+            const toneType = currentMode === 'harmonic' ? 'triangle' : 'sine';
+            if (currentMode === 'harmonic') {
+                playTone(noteToFreq(currentRoot), 1.0, latency, toneType);
+                playTone(noteToFreq(secondNote), 1.0, latency, toneType);
+            } else {
+                playTone(noteToFreq(currentRoot), 0.5, latency, toneType);
+                // second starts 0.6s after root (matches previous behavior)
+                playTone(noteToFreq(secondNote), 0.5, latency + 0.6, toneType);
+            }
+        }
+
+        function repeatLastInterval() {
+            if (!lastPlayedIntervalName || !played) return;
+
+            audioCtx.resume && audioCtx.resume();
+            let semitones = intervals[lastPlayedIntervalName];
+            if (!semitones) return;
+
+            let target = lastPlayedRoot + semitones;
+            if (currentMode === 'melodic-desc') target = lastPlayedRoot - semitones;
+
+            const latency = 0.05;
+            const toneType = currentMode === 'harmonic' ? 'triangle' : 'sine';
+            if (currentMode === 'harmonic') {
+                playTone(noteToFreq(lastPlayedRoot), 1.0, latency, toneType);
+                playTone(noteToFreq(target), 1.0, latency, toneType);
+            } else {
+                playTone(noteToFreq(lastPlayedRoot), 0.5, latency, toneType);
+                playTone(noteToFreq(target), 0.5, latency + 0.6, toneType);
+            }
+        }
+
+        // Play a preview of a named interval (does not submit an answer)
+        function playPreviewInterval(name) {
+            audioCtx.resume && audioCtx.resume();
+            let semitones = intervals[name];
+            if (!semitones) return;
+            let root = played ? currentRoot : 64;
+            let target = root + semitones;
+            if (currentMode === 'melodic-desc') target = root - semitones;
+
+            const latency = 0.05;
+            const toneType = currentMode === 'harmonic' ? 'triangle' : 'sine';
+            if (currentMode === 'harmonic') {
+                playTone(noteToFreq(root), 1.0, latency, toneType);
+                playTone(noteToFreq(target), 1.0, latency, toneType);
+            } else {
+                playTone(noteToFreq(root), 0.5, latency, toneType);
+                playTone(noteToFreq(target), 0.5, latency + 0.6, toneType);
+            }
+        }
+
+        function createOptions() {
+            let div = document.getElementById('options');
+            div.innerHTML = '';
+            Object.keys(intervals).forEach(intv => {
+                let container = document.createElement('div');
+                container.className = 'interval-row';
+
+                let btn = document.createElement('button');
+                btn.className = 'interval-btn';
+                btn.textContent = intv;
+                btn.onclick = () => checkAnswer(intv, btn);
+
+                let play = document.createElement('button');
+                play.className = 'play-btn';
+                play.textContent = '🔊';
+                play.title = 'Play this interval';
+                play.onclick = (e) => { e.stopPropagation(); playPreviewInterval(intv); };
+
+                container.appendChild(btn);
+                container.appendChild(play);
+                div.appendChild(container);
+            });
+        }
+
+        function checkAnswer(selected, btn) {
+            if (selected === currentAnswer) {
+                score++;
+            } else {
+                btn.classList.add('wrong');
+            }
+            updateScoreDisplay();
+            if (selected === currentAnswer) {
+                btn.classList.add('correct');
+                document.getElementById('status').textContent = 'Correct!';
+            } else {
+                document.getElementById('status').textContent = `Wrong. It was ${currentAnswer}`;
+            }
+            questionCount++;
+            if (questionCount >= 20) {
+                setTimeout(() => {
+                    score = 0;
+                    questionCount = 0;
+                    updateScoreDisplay();
+                    document.getElementById('status').textContent = 'Round complete! Starting new round.';
+                }, 1500);
+            }
+            setTimeout(() => {
+                btn.classList.remove('correct', 'wrong');
+            }, 1000);
+        }
+
+        function next() {
+            document.getElementById('status').textContent = '';
+            played = false;
+            playReference();
+            setTimeout(playInterval, 800);
+        }
+
+        // Init
+        createOptions();
+        setMode();
+        updateScoreDisplay();
+        next();
+    </script>
+</body>
+</html>
